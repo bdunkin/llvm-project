@@ -16724,7 +16724,17 @@ TEST_F(FormatTest, ConfigurableSpaceBeforeParens) {
   verifyFormat("int f ();", SpaceFuncDecl);
   verifyFormat("void f(int a, T b) {}", SpaceFuncDecl);
   verifyFormat("void __attribute__((asdf)) f(int a, T b) {}", SpaceFuncDecl);
+  verifyFormat("A::A ();", SpaceFuncDecl);
+  verifyFormat("A::A (int x);", SpaceFuncDecl);
+  verifyFormat("A<C>::A (int x);", SpaceFuncDecl);
+  verifyFormat("A<C>::B::D<F>::D ();", SpaceFuncDecl);
+  verifyFormat("template <typename V> A<V>::A (V x);", SpaceFuncDecl);
+  verifyFormat("template <typename C> template <typename V> A<C>::A (V x);", SpaceFuncDecl);
   verifyFormat("A::A() : a(1) {}", SpaceFuncDecl);
+  verifyFormat("A::A(int x) : a(1) {}", SpaceFuncDecl);
+  verifyFormat("A<C>::A(int x) : a(1) {}", SpaceFuncDecl);
+  verifyFormat("A<C>::B::D<F>::D() : a(1) {}", SpaceFuncDecl);
+  verifyFormat("template <typename V> A<V>::A(int x) : a(x) {}", SpaceFuncDecl);
   verifyFormat("void f () __attribute__((asdf));", SpaceFuncDecl);
   verifyFormat("void __attribute__((asdf)) f ();", SpaceFuncDecl);
   verifyFormat("#define A(x) x", SpaceFuncDecl);
@@ -16747,7 +16757,17 @@ TEST_F(FormatTest, ConfigurableSpaceBeforeParens) {
   verifyFormat("typedef void (*cb)(int);", SpaceFuncDecl);
   verifyFormat("T A::operator()();", SpaceFuncDecl);
   verifyFormat("X A::operator++(T);", SpaceFuncDecl);
+  verifyFormat("void A::test ();", SpaceFuncDecl);
+  verifyFormat("void A::B::C::test ();", SpaceFuncDecl);
+  verifyFormat("void A<C>::test ();", SpaceFuncDecl);
+  verifyFormat("void A<C>::B::D<F>::test ();", SpaceFuncDecl);
+  verifyFormat("template <typename V> void A<V>::test (V x);", SpaceFuncDecl);
+  verifyFormat("template <typename C> template <typename V> void A<C>::test (V x);",
+               SpaceFuncDecl);
   verifyFormat("T A::operator()() {}", SpaceFuncDecl);
+  verifyFormat("void A::test() {}", SpaceFuncDecl);
+  verifyFormat("void A<C>::test() {}", SpaceFuncDecl);
+  verifyFormat("void A<C>::B::D<F>::test() {}", SpaceFuncDecl);
   verifyFormat("auto lambda = []() { return 0; };", SpaceFuncDecl);
   verifyFormat("int x = int(y);", SpaceFuncDecl);
   verifyFormat("M(std::size_t R, std::size_t C) : C(C), data(R) {}",
@@ -16760,7 +16780,20 @@ TEST_F(FormatTest, ConfigurableSpaceBeforeParens) {
   verifyFormat("int f();", SpaceFuncDef);
   verifyFormat("void f (int a, T b) {}", SpaceFuncDef);
   verifyFormat("void __attribute__((asdf)) f (int a, T b) {}", SpaceFuncDef);
-  verifyFormat("A::A() : a(1) {}", SpaceFuncDef);
+  verifyFormat("A::A();", SpaceFuncDef);
+  verifyFormat("A::A(int x);", SpaceFuncDef);
+  verifyFormat("A<C>::A(int x);", SpaceFuncDef);
+  verifyFormat("A<C>::B::D<F>::D();", SpaceFuncDef);
+  verifyFormat("template <typename V> A<V>::A(int x);", SpaceFuncDef);
+  verifyFormat("template <typename C> template <typename V> A<C>::A(V x);",
+               SpaceFuncDef);
+  verifyFormat("A::A () : a(1) {}", SpaceFuncDef);
+  verifyFormat("A::A (int x) : a(1) {}", SpaceFuncDef);
+  verifyFormat("A<C>::A (int x) : a(1) {}", SpaceFuncDef);
+  verifyFormat("A<C>::B::D<F>::D () : a(1) {}", SpaceFuncDef);
+  verifyFormat("template <typename V> A<V>::A (int x) : a(x) {}", SpaceFuncDef);
+  verifyFormat("template <typename C> template <typename V> A<C>::A (V x) : a(x) {}",
+               SpaceFuncDef);
   verifyFormat("void f() __attribute__((asdf));", SpaceFuncDef);
   verifyFormat("void __attribute__((asdf)) f();", SpaceFuncDef);
   verifyFormat("#define A(x) x", SpaceFuncDef);
@@ -16783,10 +16816,24 @@ TEST_F(FormatTest, ConfigurableSpaceBeforeParens) {
   verifyFormat("typedef void (*cb)(int);", SpaceFuncDef);
   verifyFormat("T A::operator()();", SpaceFuncDef);
   verifyFormat("X A::operator++(T);", SpaceFuncDef);
+  verifyFormat("void A::test();", SpaceFuncDef);
+  verifyFormat("void A::B::C::test();", SpaceFuncDef);
+  verifyFormat("void A<C>::test();", SpaceFuncDef);
+  verifyFormat("void A<C>::B::D<F>::test();", SpaceFuncDef);
+  verifyFormat("template <typename V> void A<V>::test(V x);", SpaceFuncDef);
+  verifyFormat("template <typename C> template <typename V> void A<C>::test(V x);",
+               SpaceFuncDef);
   verifyFormat("T A::operator()() {}", SpaceFuncDef);
+  verifyFormat("void A::test () {}", SpaceFuncDef);
+  verifyFormat("void A::B::C::test () {}", SpaceFuncDef);
+  verifyFormat("void A<C>::test () {}", SpaceFuncDef);
+  verifyFormat("void A<C>::B::D<F>::test () {}", SpaceFuncDef);
+  verifyFormat("template <typename V> void A<V>::test (V x) {}", SpaceFuncDef);
+  verifyFormat("template <typename C> template <typename V> void A<C>::test (V x) {}",
+               SpaceFuncDef);
   verifyFormat("auto lambda = [] () { return 0; };", SpaceFuncDef);
   verifyFormat("int x = int(y);", SpaceFuncDef);
-  verifyFormat("M(std::size_t R, std::size_t C) : C(C), data(R) {}",
+  verifyFormat("M (std::size_t R, std::size_t C) : C(C), data(R) {}",
                SpaceFuncDef);
 
   FormatStyle SpaceIfMacros = getLLVMStyle();

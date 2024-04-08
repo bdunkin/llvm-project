@@ -3513,6 +3513,21 @@ static unsigned maxNestingDepth(const AnnotatedLine &Line) {
   return Result;
 }
 
+static bool startsQualifiedName(const FormatToken *Tok) {
+  if (Tok->startsSequence(tok::identifier, tok::coloncolon))
+    return true;
+
+  if (Tok->startsSequence(tok::identifier, TT_TemplateOpener) &&
+      Tok->Next->MatchingParen) {
+    if (Tok->Next->MatchingParen->startsSequence(TT_TemplateCloser,
+                                                 tok::coloncolon)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // Returns the name of a function with no return type, e.g. a constructor or
 // destructor.
 static FormatToken *getFunctionName(const AnnotatedLine &Line) {
@@ -3524,6 +3539,15 @@ static FormatToken *getFunctionName(const AnnotatedLine &Line) {
       if (!Tok)
         break;
       continue;
+    }
+
+    // Skip any template typename declarations that might be on non inline template function definitions
+    while (Tok->is(tok::kw_template)) {
+      assert(Tok->Next);
+      assert(Tok->Next->MatchingParen);
+      assert(Tok->Next->MatchingParen->Next);
+
+      Tok = Tok->Next->MatchingParen->Next;
     }
 
     // Make sure the name is followed by a pair of parentheses.
@@ -3548,8 +3572,15 @@ static FormatToken *getFunctionName(const AnnotatedLine &Line) {
     }
 
     // Skip to the unqualified part of the name.
-    while (Tok->startsSequence(tok::identifier, tok::coloncolon)) {
+    while (startsQualifiedName(Tok)) {
       assert(Tok->Next);
+
+      if (Tok->Next->is(TT_TemplateOpener)) {
+        assert(Tok->Next->MatchingParen);
+        Tok = Tok->Next->MatchingParen;
+        assert(Tok->Next);
+      }
+
       Tok = Tok->Next->Next;
       if (!Tok)
         return nullptr;
@@ -3580,10 +3611,17 @@ static bool isCtorOrDtorName(const FormatToken *Tok) {
   if (Prev && Prev->is(tok::tilde))
     Prev = Prev->Previous;
 
-  if (!Prev || !Prev->endsSequence(tok::coloncolon, tok::identifier))
+  if (!Prev || (!Prev->endsSequence(tok::coloncolon, tok::identifier) &&
+                !Prev->endsSequence(tok::coloncolon, TT_TemplateCloser))) {
     return false;
+  }
 
   assert(Prev->Previous);
+  if (Prev->Previous->is(TT_TemplateCloser) && Prev->Previous->MatchingParen) {
+    Prev = Prev->Previous->MatchingParen;
+    assert(Prev->Previous);
+  }
+
   return Prev->Previous->TokenText == Tok->TokenText;
 }
 
@@ -4665,13 +4703,43 @@ bool TokenAnnotator::spaceRequiredBetween(const AnnotatedLine &Line,
     if (Right.is(TT_OverloadedOperatorLParen))
       return spaceRequiredBeforeParens(Right);
     // Function declaration or definition
-    if (Line.MightBeFunctionDecl && (Left.is(TT_FunctionDeclarationName))) {
-      if (Line.mightBeFunctionDefinition()) {
-        return Style.SpaceBeforeParensOptions.AfterFunctionDefinitionName ||
-               spaceRequiredBeforeParens(Right);
-      } else {
-        return Style.SpaceBeforeParensOptions.AfterFunctionDeclarationName ||
-               spaceRequiredBeforeParens(Right);
+    if (Line.MightBeFunctionDecl) {
+
+      bool IsFunctionDeclaration =
+          Left.is(TT_FunctionDeclarationName) || Left.is(TT_CtorDtorDeclName);
+
+      // This might be a qualified function name
+      if (!IsFunctionDeclaration) {
+
+        const FormatToken *StartOfDeclaration = &Left;
+        while (StartOfDeclaration->Previous &&
+               StartOfDeclaration->Previous->is(tok::coloncolon) &&
+               StartOfDeclaration->Previous->Previous) {
+
+          StartOfDeclaration = StartOfDeclaration->Previous->Previous;
+
+          // This might have template arguments in it that we need to skip
+          if (StartOfDeclaration->is(TT_TemplateCloser) &&
+              StartOfDeclaration->MatchingParen &&
+              StartOfDeclaration->MatchingParen->Previous) {
+            StartOfDeclaration = StartOfDeclaration->MatchingParen->Previous;
+          }
+        }
+
+        // check the first token in the qualified name
+        IsFunctionDeclaration =
+            StartOfDeclaration->is(TT_FunctionDeclarationName) ||
+            StartOfDeclaration->is(TT_CtorDtorDeclName);
+      }
+
+      if (IsFunctionDeclaration) {
+        if (Line.mightBeFunctionDefinition()) {
+          return Style.SpaceBeforeParensOptions.AfterFunctionDefinitionName ||
+                 spaceRequiredBeforeParens(Right);
+        } else {
+          return Style.SpaceBeforeParensOptions.AfterFunctionDeclarationName ||
+                 spaceRequiredBeforeParens(Right);
+        }
       }
     }
     // Lambda
